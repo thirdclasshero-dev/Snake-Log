@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1117">
+<title>SnakeLog</title>
+<link rel="manifest" href="manifest.json">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #3fb950;
+  --accent-dim: #1f4a29;
+  --danger: #f85149;
+  --radius: 12px;
+  --nav-height: 64px;
+  --header-height: 56px;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  background: url('Background.png') center center / cover no-repeat;
+}
+
+/* Header */
+.header {
+  height: var(--header-height);
+  background: rgba(22, 27, 34, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+.header h1 { font-size: 18px; font-weight: 600; flex: 1; }
+
+/* Content */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  background: transparent;
+}
+
+/* Views */
+.view { display: none; padding: 16px; min-height: 100%; background: transparent; }
+.view.active { display: block; }
+
+/* Bottom nav */
+.nav {
+  height: var(--nav-height);
+  background: rgba(22, 27, 34, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  transition: color 0.15s;
+  padding: 8px;
+}
+.nav-btn.active { color: var(--accent); }
+.nav-btn svg { width: 22px; height: 22px; }
+
+/* Capture */
+.capture-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 32px 0;
+}
+.capture-btn-label {
+  width: 100%;
+  max-width: 300px;
+  aspect-ratio: 1;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  color: var(--text-muted);
+}
+.capture-btn-label:hover, .capture-btn-label:active {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.capture-btn-label svg { width: 48px; height: 48px; }
+.capture-btn-label span { font-size: 14px; }
+#photo-input { display: none; }
+
+#preview-container { width: 100%; max-width: 400px; display: none; }
+#preview-img { width: 100%; border-radius: var(--radius); display: block; }
+
+/* Form */
+.form { display: flex; flex-direction: column; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+select, input, textarea {
+  background: rgba(22, 27, 34, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 15px;
+  padding: 10px 12px;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color 0.15s;
+}
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b949e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+select:focus, input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+textarea { resize: vertical; min-height: 80px; }
+.other-input { margin-top: 8px; display: none; }
+.other-input.show { display: block; }
+
+/* Buttons */
+.btn {
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: #000; width: 100%; }
+.btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); width: 100%; }
+.btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+
+/* Gallery */
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin-bottom: 4px;
+}
+.filter-bar::-webkit-scrollbar { display: none; }
+.chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.chip.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+.card {
+  background: rgba(22, 27, 34, 0.82);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.card:active { border-color: var(--accent); }
+.card-img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: var(--bg); }
+.card-body { padding: 8px 10px; }
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.card-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.badge { font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+.badge-green { background: var(--accent-dim); color: var(--accent); }
+.badge-blue { background: #1c2e4a; color: #58a6ff; }
+.badge-gray { background: #21262d; color: var(--text-muted); }
+
+.empty-state { text-align: center; color: var(--text-muted); padding: 60px 20px; }
+.empty-state svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.4; }
+.empty-state p { font-size: 15px; }
+
+.group-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.group-count { background: var(--border); border-radius: 10px; padding: 2px 8px; font-size: 11px; }
+
+/* Search */
+.search-bar { position: relative; margin-bottom: 16px; }
+.search-bar input { padding-left: 40px; }
+.search-bar svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+.filter-panel {
+  background: rgba(22, 27, 34, 0.82);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.filter-panel select { font-size: 13px; padding: 8px 30px 8px 10px; }
+.filter-panel .form-group label { font-size: 11px; }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 100;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.modal-overlay.open { display: flex; align-items: flex-end; }
+.modal {
+  background: rgba(22, 27, 34, 0.95);
+  border-radius: var(--radius) var(--radius) 0 0;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 20px 16px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+.modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+.modal-img { width: 100%; border-radius: var(--radius); margin-bottom: 16px; display: block; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.detail-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+.detail-value { font-size: 15px; font-weight: 500; }
+.detail-notes { background: var(--bg); border-radius: 8px; padding: 12px; font-size: 14px; color: var(--text-muted); margin-bottom: 16px; white-space: pre-wrap; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions .btn { flex: 1; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: calc(var(--nav-height) + 16px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #238636;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 200;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Count badge */
+.count-badge { background: var(--accent-dim); color: var(--accent); border-radius: 10px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+
+/* Weight log */
+.section-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.section-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+.weight-entry { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.weight-entry:last-child { border-bottom: none; }
+.weight-date { font-size: 13px; color: var(--text-muted); }
+.weight-values { font-size: 14px; font-weight: 600; }
+.weight-delta { font-size: 12px; padding: 2px 7px; border-radius: 10px; }
+.delta-up { background: var(--accent-dim); color: var(--accent); }
+.delta-down { background: #3d1f1f; color: #f85149; }
+.delta-same { background: #21262d; color: var(--text-muted); }
+.weigh-form { background: var(--bg); border-radius: 8px; padding: 12px; margin-top: 10px; display: none; flex-direction: column; gap: 10px; }
+.weigh-form.open { display: flex; }
+.weight-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.optional-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="header">
+    <h1>🐍 SnakeLog</h1>
+    <span class="count-badge" id="total-count">0</span>
+  </header>
+
+  <main class="content" id="content">
+
+    <!-- ── Capture View ── -->
+    <div class="view active" id="view-capture">
+      <div class="capture-zone">
+        <label class="capture-btn-label" for="photo-input" id="capture-label">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+          </svg>
+          <span>Tap to take photo</span>
+        </label>
+        <input type="file" id="photo-input" accept="image/*" capture="environment">
+        <div id="preview-container">
+          <img id="preview-img" alt="Preview">
+        </div>
+      </div>
+
+      <div id="tag-form" style="display:none">
+        <div class="form">
+
+          <div class="form-group">
+            <label>Name / ID <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+            <input type="text" id="f-name" placeholder="e.g. Clutch 3 - F1, Sunny, #042…">
+          </div>
+
+          <div class="form-group">
+            <label>Species</label>
+            <select id="f-species">
+              <option value="">— Select —</option>
+              <option>Ball Python</option>
+              <option>Corn Snake</option>
+              <option>Hognose Snake</option>
+              <option>King Snake</option>
+              <option>Milk Snake</option>
+              <option>Boa Constrictor</option>
+              <option>Carpet Python</option>
+              <option>Blood Python</option>
+              <option>Kenyan Sand Boa</option>
+              <option>Other</option>
+            </select>
+            <input class="other-input" id="f-species-other" type="text" placeholder="Specify species…">
+          </div>
+
+          <div class="form-group">
+            <label>Base Morph</label>
+            <select id="f-morph">
+              <option value="">— Select —</option>
+              <option>Normal / Wild Type</option>
+              <option>Albino</option>
+              <option>Axanthic</option>
+              <option>Pastel</option>
+              <option>Spider</option>
+              <option>Pied / Piebald</option>
+              <option>Clown</option>
+              <option>Banana</option>
+              <option>Hypo</option>
+              <option>Anerythristic</option>
+              <option>Amelanistic</option>
+              <option>Lavender</option>
+              <option>Caramel</option>
+              <option>Ghost</option>
+              <option>Other</option>
+            </select>
+            <input class="other-input" id="f-morph-other" type="text" placeholder="Specify morph…">
+          </div>
+
+          <div class="form-group">
+            <label>Color Modifier</label>
+            <select id="f-color">
+              <option value="">— None / Unknown —</option>
+              <option>Albino / Amelanistic</option>
+              <option>Axanthic</option>
+              <option>Hypo / Hypomelanistic</option>
+              <option>Melanistic</option>
+              <option>Lavender</option>
+              <option>Caramel</option>
+              <option>Anerythristic</option>
+              <option>Snow</option>
+              <option>Other</option>
+            </select>
+            <input class="other-input" id="f-color-other" type="text" placeholder="Specify color…">
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+            <div class="form-group">
+              <label>Sex</label>
+              <select id="f-sex">
+                <option value="Unknown">Unknown</option>
+                <option value="Female">Female</option>
+                <option value="Male">Male</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select id="f-status">
+                <option value="Available">Available</option>
+                <option value="Hold">Hold</option>
+                <option value="Sold">Sold</option>
+                <option value="Keeper">Keeper</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Hatch Date</label>
+            <input type="date" id="f-hatch">
+          </div>
+
+          <div class="form-group">
+            <label>Notes</label>
+            <textarea id="f-notes" placeholder="Pairing, price, clutch #, etc."></textarea>
+          </div>
+
+          <hr class="section-divider">
+          <div>
+            <span class="optional-label">Weigh-in (optional)</span>
+            <div class="weight-row">
+              <div class="form-group" style="margin:0">
+                <label>Grams</label>
+                <input type="number" id="f-grams" placeholder="0" min="0" step="0.1">
+              </div>
+              <div class="form-group" style="margin:0">
+                <label>Ounces</label>
+                <input type="number" id="f-oz" placeholder="0" min="0" step="0.01">
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" id="save-btn">Save to Collection</button>
+          <button class="btn btn-ghost" id="cancel-btn" style="margin-top:4px">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Gallery View ── -->
+    <div class="view" id="view-gallery">
+      <div class="filter-bar" id="filter-bar">
+        <div class="chip active" data-filter="all">All</div>
+        <div class="chip" data-filter="Available">Available</div>
+        <div class="chip" data-filter="Keeper">Keepers</div>
+        <div class="chip" data-filter="Hold">On Hold</div>
+        <div class="chip" data-filter="Sold">Sold</div>
+      </div>
+
+      <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px">
+        <label style="font-size:13px; color:var(--text-muted); white-space:nowrap">Group by</label>
+        <select id="group-by" style="font-size:13px; padding:6px 30px 6px 10px; flex:1">
+          <option value="none">None</option>
+          <option value="species">Species</option>
+          <option value="baseMorph">Base Morph</option>
+          <option value="sex">Sex</option>
+          <option value="status">Status</option>
+        </select>
+      </div>
+
+      <div id="gallery-content"></div>
+    </div>
+
+    <!-- ── Search View ── -->
+    <div class="view" id="view-search">
+      <div class="search-bar">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input type="search" id="search-input" placeholder="Search species, morph, notes…">
+      </div>
+
+      <div class="filter-panel">
+        <div class="form-group">
+          <label>Species</label>
+          <select id="sf-species">
+            <option value="">Any</option>
+            <option>Ball Python</option>
+            <option>Corn Snake</option>
+            <option>Hognose Snake</option>
+            <option>King Snake</option>
+            <option>Milk Snake</option>
+            <option>Boa Constrictor</option>
+            <option>Carpet Python</option>
+            <option>Blood Python</option>
+            <option>Kenyan Sand Boa</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Sex</label>
+          <select id="sf-sex">
+            <option value="">Any</option>
+            <option>Female</option>
+            <option>Male</option>
+            <option>Unknown</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="sf-status">
+            <option value="">Any</option>
+            <option>Available</option>
+            <option>Hold</option>
+            <option>Sold</option>
+            <option>Keeper</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="search-results"></div>
+    </div>
+
+  </main>
+
+  <nav class="nav">
+    <button class="nav-btn active" data-view="capture">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+      </svg>
+      Capture
+    </button>
+    <button class="nav-btn" data-view="gallery">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+      </svg>
+      Gallery
+    </button>
+    <button class="nav-btn" data-view="search">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      Search
+    </button>
+  </nav>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <img class="modal-img" id="modal-img" alt="">
+    <div class="detail-grid" id="modal-details"></div>
+    <div id="modal-notes-wrap" style="display:none">
+      <div class="detail-label" style="margin-bottom:6px">Notes</div>
+      <div class="detail-notes" id="modal-notes"></div>
+    </div>
+
+    <hr class="section-divider">
+    <div class="section-title">Weight Log</div>
+    <div id="modal-weight-log"><p style="font-size:14px;color:var(--text-muted)">No weigh-ins recorded yet.</p></div>
+
+    <button class="btn btn-ghost" id="modal-weigh-btn" style="margin-top:12px;width:100%">+ New Weigh-in</button>
+    <div class="weigh-form" id="modal-weigh-form">
+      <div class="weight-row">
+        <div class="form-group" style="margin:0">
+          <label>Grams</label>
+          <input type="number" id="mw-grams" placeholder="0" min="0" step="0.1">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Ounces</label>
+          <input type="number" id="mw-oz" placeholder="0" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="mw-date">
+      </div>
+      <button class="btn btn-primary" id="mw-save">Save Weigh-in</button>
+    </div>
+
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn btn-danger" id="modal-delete">Delete</button>
+      <button class="btn btn-ghost" id="modal-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── IndexedDB ──
+const DB = (() => {
+  const NAME = 'snakelog', VER = 2, STORE = 'snakes', WSTORE = 'weights';
+
+  function open() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(NAME, VER);
+      r.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          const s = db.createObjectStore(STORE, { keyPath: 'id' });
+          ['species','baseMorph','pattern','sex','status','timestamp'].forEach(k => s.createIndex(k, k));
+        }
+        if (!db.objectStoreNames.contains(WSTORE)) {
+          const w = db.createObjectStore(WSTORE, { keyPath: 'id' });
+          w.createIndex('snakeId', 'snakeId');
+          w.createIndex('timestamp', 'timestamp');
+        }
+      };
+      r.onsuccess = e => res(e.target.result);
+      r.onerror = e => rej(e.target.error);
+    });
+  }
+
+  async function all() {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const r = db.transaction(STORE).objectStore(STORE).getAll();
+      r.onsuccess = () => res(r.result.sort((a,b) => b.timestamp - a.timestamp));
+      r.onerror = rej;
+    });
+  }
+
+  async function add(rec) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const r = db.transaction(STORE, 'readwrite').objectStore(STORE).add(rec);
+      r.onsuccess = () => res();
+      r.onerror = rej;
+    });
+  }
+
+  async function remove(id) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const r = db.transaction(STORE, 'readwrite').objectStore(STORE).delete(id);
+      r.onsuccess = res;
+      r.onerror = rej;
+    });
+  }
+
+  async function addWeight(rec) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const r = db.transaction(WSTORE, 'readwrite').objectStore(WSTORE).add(rec);
+      r.onsuccess = () => res();
+      r.onerror = rej;
+    });
+  }
+
+  async function weightsBySnake(snakeId) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const r = db.transaction(WSTORE).objectStore(WSTORE).index('snakeId').getAll(snakeId);
+      r.onsuccess = () => res(r.result.sort((a,b) => a.timestamp - b.timestamp));
+      r.onerror = rej;
+    });
+  }
+
+  async function removeWeightsBySnake(snakeId) {
+    const db = await open();
+    const entries = await weightsBySnake(snakeId);
+    return new Promise((res, rej) => {
+      const tx = db.transaction(WSTORE, 'readwrite');
+      entries.forEach(e => tx.objectStore(WSTORE).delete(e.id));
+      tx.oncomplete = res;
+      tx.onerror = rej;
+    });
+  }
+
+  return { all, add, remove, addWeight, weightsBySnake, removeWeightsBySnake };
+})();
+
+// ── State ──
+let allSnakes = [];
+let currentFilter = 'all';
+let currentGroupBy = 'none';
+let openRecord = null;
+let currentPhoto = null;
+
+// ── Nav ──
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => showView(btn.dataset.view));
+});
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === `view-${name}`));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  if (name === 'gallery') renderGallery();
+  if (name === 'search') renderSearch();
+}
+
+// ── Capture ──
+const photoInput = document.getElementById('photo-input');
+const previewContainer = document.getElementById('preview-container');
+const previewImg = document.getElementById('preview-img');
+const tagForm = document.getElementById('tag-form');
+const captureLabel = document.getElementById('capture-label');
+
+photoInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    currentPhoto = ev.target.result;
+    previewImg.src = currentPhoto;
+    previewContainer.style.display = 'block';
+    captureLabel.style.display = 'none';
+    tagForm.style.display = 'block';
+    document.getElementById('content').scrollTop = 0;
+  };
+  reader.readAsDataURL(file);
+});
+
+// "Other" reveal
+['species','morph','color'].forEach(f => {
+  const sel = document.getElementById(`f-${f}`);
+  const inp = document.getElementById(`f-${f}-other`);
+  if (!inp) return;
+  sel.addEventListener('change', () => inp.classList.toggle('show', sel.value === 'Other'));
+});
+
+function resolveField(id) {
+  const sel = document.getElementById(`f-${id}`);
+  const other = document.getElementById(`f-${id}-other`);
+  if (sel.value === 'Other' && other && other.value.trim()) return other.value.trim();
+  return sel.value || '';
+}
+
+const G_TO_OZ = 0.035274;
+
+function gramsToOz(g) { return +(g * G_TO_OZ).toFixed(2); }
+function ozToGrams(oz) { return +(oz / G_TO_OZ).toFixed(1); }
+
+function buildFilename(rec) {
+  const parts = [
+    rec.name, rec.species, rec.baseMorph, rec.color,
+    rec.sex, rec.status, rec.hatchDate
+  ].filter(Boolean);
+  if (rec.notes) parts.push(rec.notes.slice(0, 50));
+  const safe = parts.join('_').replace(/[^a-zA-Z0-9_\-\.]/g, '-').replace(/-+/g, '-');
+  return safe + '.jpg';
+}
+
+function downloadPhoto(dataUrl, filename) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  a.click();
+}
+
+// Gram/oz auto-conversion on capture form
+document.getElementById('f-grams').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  document.getElementById('f-oz').value = v > 0 ? gramsToOz(v) : '';
+});
+document.getElementById('f-oz').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  document.getElementById('f-grams').value = v > 0 ? ozToGrams(v) : '';
+});
+
+document.getElementById('save-btn').addEventListener('click', async () => {
+  if (!currentPhoto) return;
+  const rec = {
+    id: crypto.randomUUID(),
+    photo: currentPhoto,
+    name: document.getElementById('f-name').value.trim(),
+    species: resolveField('species'),
+    baseMorph: resolveField('morph'),
+    color: resolveField('color'),
+    sex: document.getElementById('f-sex').value,
+    status: document.getElementById('f-status').value,
+    hatchDate: document.getElementById('f-hatch').value,
+    notes: document.getElementById('f-notes').value.trim(),
+    timestamp: Date.now()
+  };
+  await DB.add(rec);
+  const grams = parseFloat(document.getElementById('f-grams').value);
+  if (grams > 0) {
+    await DB.addWeight({
+      id: crypto.randomUUID(),
+      snakeId: rec.id,
+      grams,
+      date: new Date().toISOString().slice(0,10),
+      timestamp: Date.now()
+    });
+  }
+  allSnakes = await DB.all();
+  updateCount();
+  downloadPhoto(rec.photo, buildFilename(rec));
+  showToast('Saved — check your Downloads!');
+  resetCapture();
+});
+
+document.getElementById('cancel-btn').addEventListener('click', resetCapture);
+
+function resetCapture() {
+  currentPhoto = null;
+  photoInput.value = '';
+  previewImg.src = '';
+  previewContainer.style.display = 'none';
+  captureLabel.style.display = 'flex';
+  tagForm.style.display = 'none';
+  ['f-species','f-morph','f-color'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.selectedIndex = 0;
+    const other = document.getElementById(`${id}-other`);
+    if (other) { other.value = ''; other.classList.remove('show'); }
+  });
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-sex').value = 'Unknown';
+  document.getElementById('f-status').value = 'Available';
+  document.getElementById('f-hatch').value = '';
+  document.getElementById('f-notes').value = '';
+  document.getElementById('f-grams').value = '';
+  document.getElementById('f-oz').value = '';
+}
+
+// ── Gallery ──
+document.getElementById('filter-bar').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  currentFilter = chip.dataset.filter;
+  renderGallery();
+});
+
+document.getElementById('group-by').addEventListener('change', e => {
+  currentGroupBy = e.target.value;
+  renderGallery();
+});
+
+function applyFilter(snakes) {
+  return currentFilter === 'all' ? snakes : snakes.filter(s => s.status === currentFilter);
+}
+
+function renderGallery() {
+  const el = document.getElementById('gallery-content');
+  const snakes = applyFilter(allSnakes);
+
+  if (!snakes.length) {
+    el.innerHTML = `<div class="empty-state">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
+      <p>No photos yet.<br>Tap Capture to add your first.</p>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = '';
+
+  if (currentGroupBy === 'none') {
+    el.appendChild(makeGrid(snakes));
+    return;
+  }
+
+  const groups = {};
+  snakes.forEach(s => {
+    const key = s[currentGroupBy] || 'Unknown';
+    (groups[key] = groups[key] || []).push(s);
+  });
+  Object.keys(groups).sort().forEach(key => {
+    const h = document.createElement('div');
+    h.className = 'group-header';
+    h.innerHTML = `${key} <span class="group-count">${groups[key].length}</span>`;
+    el.appendChild(h);
+    el.appendChild(makeGrid(groups[key]));
+  });
+}
+
+function makeGrid(snakes) {
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  snakes.forEach(s => grid.appendChild(makeCard(s)));
+  return grid;
+}
+
+function makeCard(s) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  const title = s.name || [s.species, s.baseMorph].filter(Boolean).join(' · ') || 'Unknown';
+  const subtitle = s.name ? [s.species, s.baseMorph].filter(Boolean).join(' · ') : '';
+  const statusClass = { Available: 'badge-green', Keeper: 'badge-blue', Hold: 'badge-blue', Sold: 'badge-gray' }[s.status] || 'badge-gray';
+  const date = s.hatchDate ? new Date(s.hatchDate + 'T00:00:00').toLocaleDateString('en-US', { month:'short', year:'numeric' }) : '';
+  card.innerHTML = `
+    <img class="card-img" src="${s.photo}" alt="${title}" loading="lazy">
+    <div class="card-body">
+      <div class="card-title">${title}</div>
+      ${subtitle ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">${subtitle}</div>` : ''}
+      <div class="card-meta">
+        <span class="badge ${statusClass}">${s.status}</span>
+        ${s.sex !== 'Unknown' ? `<span class="badge badge-gray">${s.sex}</span>` : ''}
+        ${date ? `<span class="badge badge-gray">${date}</span>` : ''}
+      </div>
+    </div>`;
+  card.addEventListener('click', () => openModal(s));
+  return card;
+}
+
+// ── Search ──
+['search-input','sf-species','sf-sex','sf-status'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', renderSearch);
+  el.addEventListener('change', renderSearch);
+});
+
+function renderSearch() {
+  const q = document.getElementById('search-input').value.toLowerCase().trim();
+  const sp = document.getElementById('sf-species').value;
+  const sx = document.getElementById('sf-sex').value;
+  const st = document.getElementById('sf-status').value;
+
+  const container = document.getElementById('search-results');
+
+  if (!q && !sp && !sx && !st && !pt) {
+    container.innerHTML = `<div class="empty-state" style="padding:30px 0"><p>${allSnakes.length} animal${allSnakes.length !== 1 ? 's' : ''} in collection</p></div>`;
+    return;
+  }
+
+  const results = allSnakes.filter(s => {
+    if (sp && s.species !== sp) return false;
+    if (sx && s.sex !== sx) return false;
+    if (st && s.status !== st) return false;
+    if (q) {
+      const hay = [s.name, s.species, s.baseMorph, s.color, s.sex, s.status, s.notes, s.hatchDate].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  if (!results.length) {
+    container.innerHTML = `<div class="empty-state" style="padding:30px 0"><p>No results found.</p></div>`;
+    return;
+  }
+
+  container.innerHTML = `<div style="font-size:13px;color:var(--text-muted);margin-bottom:10px">${results.length} result${results.length !== 1 ? 's' : ''}</div>`;
+  container.appendChild(makeGrid(results));
+}
+
+// ── Modal ──
+async function openModal(s) {
+  openRecord = s;
+  document.getElementById('modal-img').src = s.photo;
+
+  const fields = [
+    ['Name / ID', s.name], ['Species', s.species], ['Base Morph', s.baseMorph],
+    ['Color Modifier', s.color], ['Sex', s.sex], ['Status', s.status],
+    ['Hatch Date', s.hatchDate ? new Date(s.hatchDate + 'T00:00:00').toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}) : '']
+  ].filter(([,v]) => v);
+
+  document.getElementById('modal-details').innerHTML = fields.map(([l,v]) =>
+    `<div><div class="detail-label">${l}</div><div class="detail-value">${v}</div></div>`
+  ).join('');
+
+  const nw = document.getElementById('modal-notes-wrap');
+  document.getElementById('modal-notes').textContent = s.notes;
+  nw.style.display = s.notes ? 'block' : 'none';
+
+  // Reset weigh-in form
+  document.getElementById('modal-weigh-form').classList.remove('open');
+  document.getElementById('mw-grams').value = '';
+  document.getElementById('mw-oz').value = '';
+  document.getElementById('mw-date').value = new Date().toISOString().slice(0,10);
+
+  await renderWeightLog(s.id);
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+async function renderWeightLog(snakeId) {
+  const entries = await DB.weightsBySnake(snakeId);
+  const el = document.getElementById('modal-weight-log');
+  if (!entries.length) {
+    el.innerHTML = '<p style="font-size:14px;color:var(--text-muted)">No weigh-ins recorded yet.</p>';
+    return;
+  }
+  el.innerHTML = entries.map((e, i) => {
+    const prev = entries[i - 1];
+    const diff = prev ? +(e.grams - prev.grams).toFixed(1) : null;
+    const deltaClass = diff === null ? '' : diff > 0 ? 'delta-up' : diff < 0 ? 'delta-down' : 'delta-same';
+    const deltaText = diff === null ? '' : (diff > 0 ? `+${diff}g` : `${diff}g`);
+    const oz = gramsToOz(e.grams);
+    const dateStr = new Date(e.date + 'T00:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+    return `<div class="weight-entry">
+      <span class="weight-date">${dateStr}</span>
+      <span class="weight-values">${e.grams}g / ${oz}oz</span>
+      ${deltaText ? `<span class="weight-delta ${deltaClass}">${deltaText}</span>` : '<span></span>'}
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  openRecord = null;
+}
+
+document.getElementById('modal-delete').addEventListener('click', async () => {
+  if (!openRecord || !confirm('Delete this photo? This cannot be undone.')) return;
+  await DB.remove(openRecord.id);
+  await DB.removeWeightsBySnake(openRecord.id);
+  allSnakes = await DB.all();
+  updateCount();
+  closeModal();
+  renderGallery();
+  renderSearch();
+  showToast('Deleted.');
+});
+
+// ── Weigh-in from modal ──
+document.getElementById('modal-weigh-btn').addEventListener('click', () => {
+  document.getElementById('modal-weigh-form').classList.toggle('open');
+});
+
+document.getElementById('mw-grams').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  document.getElementById('mw-oz').value = v > 0 ? gramsToOz(v) : '';
+});
+document.getElementById('mw-oz').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  document.getElementById('mw-grams').value = v > 0 ? ozToGrams(v) : '';
+});
+
+document.getElementById('mw-save').addEventListener('click', async () => {
+  if (!openRecord) return;
+  const grams = parseFloat(document.getElementById('mw-grams').value);
+  const date = document.getElementById('mw-date').value;
+  if (!grams || !date) { showToast('Enter a weight and date.'); return; }
+  await DB.addWeight({ id: crypto.randomUUID(), snakeId: openRecord.id, grams, date, timestamp: Date.now() });
+  document.getElementById('mw-grams').value = '';
+  document.getElementById('mw-oz').value = '';
+  document.getElementById('modal-weigh-form').classList.remove('open');
+  await renderWeightLog(openRecord.id);
+  showToast('Weigh-in saved!');
+});
+
+// ── Toast ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function updateCount() {
+  document.getElementById('total-count').textContent = allSnakes.length;
+}
+
+// ── Init ──
+async function init() {
+  allSnakes = await DB.all();
+  updateCount();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+init();
+</script>
+</body>
+</html>
